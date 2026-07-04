@@ -24,7 +24,9 @@ export function TrendExplanation({ indicators }: TrendExplanationProps) {
       </div>
 
       <p className="mt-5 max-w-3xl text-base leading-7 text-zinc-300">{indicators.explanation}</p>
-      <p className="mt-4 text-sm font-semibold text-amber-100">Educational analysis only. Not financial advice.</p>
+      <p className="mt-4 text-sm font-semibold text-amber-100">
+        Educational analysis only. Not financial advice. No broker execution or real-money trading is included.
+      </p>
     </section>
   );
 }

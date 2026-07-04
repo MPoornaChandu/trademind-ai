@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
+from app.ai.schemas import AnalysisResult
+
 
 class AppInfoResponse(BaseModel):
     name: str
@@ -49,6 +51,15 @@ class AnalysisResponse(BaseModel):
     learning_points: list[str]
     disclaimer: str
     source: str
+    provider_used: str | None = None
+    outlook: str | None = None
+    key_drivers: list[str] | None = None
+    uncertainty_notes: list[str] | None = None
+    risk_warnings: list[str] | None = None
+    what_could_go_wrong: list[str] | None = None
+    confidence: str | None = None
+    ai_disclaimer: str | None = None
+    ai_result: AnalysisResult | None = None
 
 
 class RiskResponse(BaseModel):

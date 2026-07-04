@@ -10,7 +10,7 @@ from app.services.market_data import fetch_history, normalize_symbol
 from app.utils.errors import market_data_error
 
 
-DISCLAIMER = "Educational risk analysis only. Not financial advice."
+DISCLAIMER = "Educational analysis only. Not financial advice. No broker execution or real-money trading is included."
 REQUIRED_OHLC_COLUMNS = {"High", "Low", "Close"}
 
 

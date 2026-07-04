@@ -32,7 +32,11 @@ test("loads dashboard, manages watchlist, and compares symbols", async ({ page }
   await page.goto("/");
 
   await expect(page.getByRole("heading", { name: "TradeMind AI" })).toBeVisible();
-  await expect(page.locator("header").getByText("Educational analysis only. Not financial advice.")).toBeVisible();
+  await expect(
+    page
+      .locator("header")
+      .getByText("Educational analysis only. Not financial advice. No broker execution or real-money trading is included.")
+  ).toBeVisible();
   await expect(page.getByLabel("Stock symbol")).toHaveValue("RELIANCE.NS");
 
   const marketSummary = page.locator("section").filter({ hasText: "Market summary" });
@@ -136,7 +140,7 @@ function mockAnalysis(symbol: string) {
     indicator_explanation: ["RSI, moving averages, and MACD are shown for learning."],
     risk_notes: ["This mocked response is not financial advice."],
     learning_points: ["Use multiple indicators when studying market behavior."],
-    disclaimer: "Educational analysis only. Not financial advice.",
+    disclaimer: "Educational analysis only. Not financial advice. No broker execution or real-money trading is included.",
     source: "rule_based"
   };
 }
@@ -158,6 +162,6 @@ function mockRisk(symbol: string) {
     risk_explanation: "Mocked risk explanation for smoke testing.",
     risk_notes: ["Volatility and drawdown are educational risk metrics."],
     learning_points: ["Risk metrics describe past movement, not future certainty."],
-    disclaimer: "Educational risk analysis only. Not financial advice."
+    disclaimer: "Educational analysis only. Not financial advice. No broker execution or real-money trading is included."
   };
 }

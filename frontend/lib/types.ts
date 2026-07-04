@@ -23,7 +23,7 @@ export type IndicatorSummary = {
   explanation: string;
 };
 
-export type AnalysisSource = "gemini" | "rule_based" | "fallback_after_ai_error";
+export type AnalysisSource = "gemini" | "rule_based" | "fallback_after_ai_error" | "ollama" | "cloud";
 
 export type AIAnalysis = {
   symbol: string;
@@ -34,6 +34,9 @@ export type AIAnalysis = {
   learning_points: string[];
   disclaimer: string;
   source: AnalysisSource;
+  provider_used?: string | null;
+  outlook?: "bullish_bias" | "bearish_bias" | "neutral" | "mixed" | null;
+  confidence?: "low" | "medium" | "high" | null;
 };
 
 export type RiskLevel = "low" | "medium" | "high";

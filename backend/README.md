@@ -25,8 +25,8 @@ It does not include broker APIs, real-money trading, buy/sell advice, alerts, or
   - MACD signal
   - MACD histogram
 - Simple trend label: `bullish`, `bearish`, or `neutral`
-- Educational analysis endpoint with optional Gemini support
-- Rule-based fallback when Gemini is not configured or unavailable
+- Educational analysis endpoint with a multi-provider AI router
+- Rule-based default and fallback when optional providers are not configured or unavailable
 - Educational risk management endpoint with volatility, ATR, drawdown, and risk-level metrics
 
 ## Endpoints
@@ -37,6 +37,10 @@ GET /health
 GET /api/market/{symbol}
 GET /api/indicators/{symbol}
 GET /api/analysis/{symbol}
+GET /api/analysis/{symbol}?provider=rule_based
+GET /api/analysis/{symbol}?provider=gemini
+GET /api/analysis/{symbol}?provider=ollama&depth=quick
+GET /api/providers/health
 GET /api/risk/{symbol}
 ```
 
@@ -63,14 +67,40 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-## Optional Gemini Setup
+## AI Provider Setup
 
-The backend works without Gemini. If `GEMINI_API_KEY` is missing, `/api/analysis/{symbol}` uses deterministic rule-based educational analysis.
+The backend defaults to deterministic rule-based educational analysis.
+
+Supported `AI_PROVIDER` values:
+
+- `rule_based`: default, always available.
+- `gemini`: optional, used only when `GEMINI_API_KEY` is configured.
+- `ollama`: optional, uses a local Ollama server when available.
+- `cloud`: future stub, currently falls back safely.
+
+If Gemini, Ollama, or the cloud stub fails or returns unsafe wording, the router falls back safely. The response remains educational decision-support only.
 
 To enable Gemini, create a local environment variable:
 
 ```powershell
 $env:GEMINI_API_KEY = "your_api_key_here"
+```
+
+Optional local Ollama setup:
+
+```powershell
+ollama pull qwen3:8b
+ollama pull gemma3:4b
+ollama pull deepseek-r1:8b
+```
+
+Example local AI variables:
+
+```powershell
+$env:AI_PROVIDER = "ollama"
+$env:OLLAMA_BASE_URL = "http://localhost:11434"
+$env:OLLAMA_MODEL = "qwen3:8b"
+$env:OLLAMA_FAST_MODEL = "gemma3:4b"
 ```
 
 You can also copy the example env file:
@@ -79,7 +109,7 @@ You can also copy the example env file:
 Copy-Item .env.example .env
 ```
 
-If Gemini fails, the backend returns rule-based fallback analysis and marks the response source as `fallback_after_ai_error`.
+`depth=quick` uses the configured fast Ollama model when Ollama is selected.
 
 ## Run The Backend
 
@@ -91,6 +121,14 @@ The backend should start at:
 
 ```text
 http://127.0.0.1:8000
+```
+
+## Production Start Command
+
+For Render or another production host that injects a `PORT` environment variable, use:
+
+```powershell
+uvicorn app.main:app --host 0.0.0.0 --port $PORT
 ```
 
 ## Smoke Test
@@ -136,6 +174,6 @@ http://127.0.0.1:8000/api/risk/TCS.NS
 - Invalid, delisted, or missing Yahoo Finance symbols may return a controlled error.
 - Indian NSE stocks should use the `.NS` suffix, for example `RELIANCE.NS`, `TCS.NS`, `INFY.NS`, or `HDFCBANK.NS`.
 - Yahoo Finance data can be delayed or temporarily unavailable.
-- Gemini is optional. The analysis endpoint remains available through rule-based fallback without a Gemini key.
+- Gemini and Ollama are optional. The analysis endpoint remains available through rule-based fallback without external AI services.
 
-The indicator, analysis, and risk output is educational and should not be treated as financial advice.
+Educational analysis only. Not financial advice. No broker execution or real-money trading is included.

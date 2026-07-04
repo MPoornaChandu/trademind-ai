@@ -6,3 +6,5 @@ numpy
 pydantic
 google-genai
 python-dotenv
+requests
+pytest

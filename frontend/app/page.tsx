@@ -117,7 +117,7 @@ export default function DashboardPage() {
         <header className="grid gap-6 py-8 lg:grid-cols-[1fr_auto] lg:items-end">
           <div>
             <div className="mb-5 inline-flex rounded-full border border-teal-200/20 bg-teal-200/10 px-4 py-2 text-xs font-bold uppercase text-teal-100">
-              Educational analysis only. Not financial advice.
+              Educational analysis only. Not financial advice. No broker execution or real-money trading is included.
             </div>
             <h1 className="text-4xl font-black tracking-normal text-white sm:text-6xl">TradeMind AI</h1>
             <p className="mt-4 max-w-3xl text-base leading-7 text-zinc-300 sm:text-lg">

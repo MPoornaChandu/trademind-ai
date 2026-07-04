@@ -11,7 +11,8 @@ warnings.filterwarnings("ignore", message="Using `httpx` with `starlette.testcli
 from fastapi.testclient import TestClient
 
 # Keep this smoke test deterministic. The analysis endpoint should use the
-# rule-based fallback even if a local .env file exists.
+# rule-based provider even if a local .env file exists.
+os.environ["AI_PROVIDER"] = "rule_based"
 os.environ["GEMINI_API_KEY"] = ""
 
 from app.main import app  # noqa: E402
@@ -91,14 +92,20 @@ def assert_valid_endpoint(name: str, path: str) -> None:
     if path.startswith("/api/analysis/"):
         assert data["symbol"] == "RELIANCE.NS"
         assert data["source"] in {"rule_based", "fallback_after_ai_error"}
-        assert data["disclaimer"] == "Educational analysis only. Not financial advice."
+        assert data["disclaimer"] == (
+            "Educational analysis only. Not financial advice. "
+            "No broker execution or real-money trading is included."
+        )
         assert data["summary"]
 
     if path.startswith("/api/risk/"):
         expected_symbol = path.rsplit("/", 1)[-1]
         assert data["symbol"] == expected_symbol
         assert data["risk_level"] in {"low", "medium", "high"}
-        assert data["disclaimer"] == "Educational risk analysis only. Not financial advice."
+        assert data["disclaimer"] == (
+            "Educational analysis only. Not financial advice. "
+            "No broker execution or real-money trading is included."
+        )
 
 
 def assert_invalid_endpoint(name: str, path: str) -> None:

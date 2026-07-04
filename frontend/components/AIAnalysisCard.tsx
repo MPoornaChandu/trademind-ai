@@ -8,13 +8,17 @@ type AIAnalysisCardProps = {
 const sourceLabels: Record<AnalysisSource, string> = {
   gemini: "Gemini",
   rule_based: "Rule-based",
-  fallback_after_ai_error: "Fallback"
+  fallback_after_ai_error: "Fallback",
+  ollama: "Ollama",
+  cloud: "Cloud"
 };
 
 const sourceStyles: Record<AnalysisSource, string> = {
   gemini: "border-teal-200/30 bg-teal-200/10 text-teal-100",
   rule_based: "border-amber-200/30 bg-amber-200/10 text-amber-100",
-  fallback_after_ai_error: "border-rose-200/30 bg-rose-200/10 text-rose-100"
+  fallback_after_ai_error: "border-rose-200/30 bg-rose-200/10 text-rose-100",
+  ollama: "border-sky-200/30 bg-sky-200/10 text-sky-100",
+  cloud: "border-violet-200/30 bg-violet-200/10 text-violet-100"
 };
 
 function BulletList({ title, items }: { title: string; items: string[] }) {
@@ -53,7 +57,7 @@ export function AIAnalysisCard({ analysis, warning }: AIAnalysisCardProps) {
           <h2 className="mt-2 text-2xl font-bold text-white">Educational explanation</h2>
         </div>
         <span className={`w-fit rounded-full border px-4 py-2 text-sm font-black ${sourceStyles[analysis.source]}`}>
-          {sourceLabels[analysis.source]}
+          {analysis.provider_used ?? sourceLabels[analysis.source]}
         </span>
       </div>
 
