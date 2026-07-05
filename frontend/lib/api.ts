@@ -1,4 +1,13 @@
-import type { AIAnalysis, ComparisonData, DashboardData, IndicatorSummary, MarketSummary, RiskReport } from "./types";
+import type {
+  AIAnalysis,
+  ComparisonData,
+  DashboardData,
+  IndicatorSummary,
+  MarketSummary,
+  RankingCompareResponse,
+  RankingReport,
+  RiskReport
+} from "./types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
 const REQUEST_TIMEOUT_MS = 20000;
@@ -7,7 +16,7 @@ type ApiErrorBody = {
   detail?: string;
 };
 
-async function fetchJson<T>(path: string): Promise<T> {
+async function fetchJson<T>(path: string, options: RequestInit = {}): Promise<T> {
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
@@ -16,9 +25,11 @@ async function fetchJson<T>(path: string): Promise<T> {
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
       headers: {
-        Accept: "application/json"
+        Accept: "application/json",
+        ...(options.body ? { "Content-Type": "application/json" } : {})
       },
       cache: "no-store",
+      ...options,
       signal: controller.signal
     });
   } catch (error) {
@@ -56,9 +67,10 @@ export async function fetchDashboardData(symbol: string): Promise<DashboardData>
     fetchJson<IndicatorSummary>(`/api/indicators/${cleanSymbol}`)
   ]);
 
-  const [analysisResult, riskResult] = await Promise.allSettled([
+  const [analysisResult, riskResult, rankingResult] = await Promise.allSettled([
     fetchJson<AIAnalysis>(`/api/analysis/${cleanSymbol}`),
-    fetchJson<RiskReport>(`/api/risk/${cleanSymbol}`)
+    fetchJson<RiskReport>(`/api/risk/${cleanSymbol}`),
+    fetchJson<RankingReport>(`/api/ranking/${cleanSymbol}`)
   ]);
 
   return {
@@ -68,8 +80,20 @@ export async function fetchDashboardData(symbol: string): Promise<DashboardData>
     analysisError:
       analysisResult.status === "rejected" ? errorMessage(analysisResult.reason, "Analysis could not be loaded.") : null,
     risk: riskResult.status === "fulfilled" ? riskResult.value : null,
-    riskError: riskResult.status === "rejected" ? errorMessage(riskResult.reason, "Risk analysis could not be loaded.") : null
+    riskError: riskResult.status === "rejected" ? errorMessage(riskResult.reason, "Risk analysis could not be loaded.") : null,
+    ranking: rankingResult.status === "fulfilled" ? rankingResult.value : null,
+    rankingError:
+      rankingResult.status === "rejected" ? errorMessage(rankingResult.reason, "Setup ranking could not be loaded.") : null
   };
+}
+
+export async function fetchRankingComparison(symbols: string[]): Promise<RankingCompareResponse> {
+  const cleanSymbols = symbols.map((symbol) => symbol.trim().toUpperCase()).filter(Boolean).slice(0, 8);
+
+  return fetchJson<RankingCompareResponse>("/api/ranking/compare", {
+    method: "POST",
+    body: JSON.stringify({ symbols: cleanSymbols })
+  });
 }
 
 export async function getComparisonData(symbol: string): Promise<ComparisonData> {

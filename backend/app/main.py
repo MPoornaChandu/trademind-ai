@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.agents.analysis_agent import get_analysis_summary
 from app.agents.risk_agent import get_risk_summary
+from app.api.ranking import router as ranking_router
 from app.ai.router import get_provider_health
 from app.models import AnalysisResponse, AppInfoResponse, HealthResponse, IndicatorsResponse, MarketResponse, RiskResponse
 from app.services.market_data import get_indicator_summary, get_market_summary
@@ -42,9 +43,11 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=get_allowed_origins(),
     allow_credentials=False,
-    allow_methods=["GET"],
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
+
+app.include_router(ranking_router)
 
 
 @app.get("/", response_model=AppInfoResponse)

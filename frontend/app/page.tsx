@@ -9,6 +9,7 @@ import { IndicatorCard } from "@/components/IndicatorCard";
 import { LoadingState } from "@/components/LoadingState";
 import { MarketSummaryCard } from "@/components/MarketSummaryCard";
 import { RiskManagementCard } from "@/components/RiskManagementCard";
+import { SetupRankingCard } from "@/components/SetupRankingCard";
 import { SymbolSearch } from "@/components/SymbolSearch";
 import { TrendExplanation } from "@/components/TrendExplanation";
 import { DEFAULT_WATCHLIST, MAX_WATCHLIST_ITEMS, WatchlistPanel } from "@/components/WatchlistPanel";
@@ -158,6 +159,7 @@ export default function DashboardPage() {
               <IndicatorCard indicators={data.indicators} />
             </div>
             <TrendExplanation indicators={data.indicators} />
+            <SetupRankingCard ranking={data.ranking} warning={data.rankingError} />
             <AIAnalysisCard analysis={data.analysis} warning={data.analysisError} />
             <RiskManagementCard risk={data.risk} warning={data.riskError} />
             <ComparisonPanel watchlist={watchlist} />

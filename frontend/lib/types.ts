@@ -40,6 +40,7 @@ export type AIAnalysis = {
 };
 
 export type RiskLevel = "low" | "medium" | "high";
+export type RankingConfidence = "low" | "medium" | "high";
 
 export type RiskReport = {
   symbol: string;
@@ -58,6 +59,47 @@ export type RiskReport = {
   disclaimer: string;
 };
 
+export type RankingSubscores = {
+  trend_score: number;
+  momentum_score: number;
+  rsi_score: number;
+  macd_score: number;
+  volatility_score: number;
+  drawdown_score: number;
+  risk_score: number;
+};
+
+export type RankingReport = {
+  symbol: string;
+  score: number;
+  setup_quality: string;
+  confidence: RankingConfidence;
+  risk_level: RiskLevel;
+  subscores: RankingSubscores;
+  reasons: string[];
+  warnings: string[];
+  what_could_go_wrong: string[];
+  disclaimer: string;
+};
+
+export type RankingCompareItem = {
+  rank: number | null;
+  symbol: string;
+  score: number | null;
+  setup_quality: string | null;
+  risk_level: RiskLevel | null;
+  confidence: RankingConfidence | null;
+  reasons: string[];
+  warnings: string[];
+  error: string | null;
+};
+
+export type RankingCompareResponse = {
+  rankings: RankingCompareItem[];
+  best_setup: string | null;
+  disclaimer: string;
+};
+
 export type DashboardData = {
   market: MarketSummary;
   indicators: IndicatorSummary;
@@ -65,6 +107,8 @@ export type DashboardData = {
   analysisError: string | null;
   risk: RiskReport | null;
   riskError: string | null;
+  ranking: RankingReport | null;
+  rankingError: string | null;
 };
 
 export type ComparisonData = {

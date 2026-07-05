@@ -27,6 +27,7 @@ VALID_ENDPOINTS = [
     ("analysis endpoint for RELIANCE.NS", "/api/analysis/RELIANCE.NS"),
     ("risk endpoint for RELIANCE.NS", "/api/risk/RELIANCE.NS"),
     ("risk endpoint for TCS.NS", "/api/risk/TCS.NS"),
+    ("ranking endpoint for RELIANCE.NS", "/api/ranking/RELIANCE.NS"),
 ]
 
 INVALID_ENDPOINTS = [
@@ -34,6 +35,7 @@ INVALID_ENDPOINTS = [
     ("indicators endpoint invalid symbol handling", "/api/indicators/INVALID_SYMBOL"),
     ("analysis endpoint invalid symbol handling", "/api/analysis/INVALID_SYMBOL"),
     ("risk endpoint invalid symbol handling", "/api/risk/INVALID_SYMBOL"),
+    ("ranking endpoint invalid symbol handling", "/api/ranking/INVALID_SYMBOL"),
 ]
 
 CONTROLLED_ERROR_CODES = {400, 404, 502}
@@ -101,6 +103,18 @@ def assert_valid_endpoint(name: str, path: str) -> None:
     if path.startswith("/api/risk/"):
         expected_symbol = path.rsplit("/", 1)[-1]
         assert data["symbol"] == expected_symbol
+        assert data["risk_level"] in {"low", "medium", "high"}
+        assert data["disclaimer"] == (
+            "Educational analysis only. Not financial advice. "
+            "No broker execution or real-money trading is included."
+        )
+
+    if path.startswith("/api/ranking/"):
+        expected_symbol = path.rsplit("/", 1)[-1]
+        assert data["symbol"] == expected_symbol
+        assert 0 <= data["score"] <= 100
+        assert data["setup_quality"]
+        assert data["confidence"] in {"low", "medium", "high"}
         assert data["risk_level"] in {"low", "medium", "high"}
         assert data["disclaimer"] == (
             "Educational analysis only. Not financial advice. "
