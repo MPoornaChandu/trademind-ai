@@ -1,0 +1,49 @@
+{
+  "manifest_version": 3,
+  "name": "TradeMind AI",
+  "description": "Educational stock setup analysis and relative ranking powered by TradeMind AI.",
+  "version": "0.1.0",
+  "action": {
+    "default_title": "TradeMind AI",
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "permissions": [
+    "activeTab",
+    "sidePanel",
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://trademind-ai-backend-uw1j.onrender.com/*",
+    "https://trademind-ai-delta.vercel.app/*",
+    "https://kite.zerodha.com/*",
+    "https://www.tradingview.com/*",
+    "https://in.tradingview.com/*",
+    "https://www.moneycontrol.com/*",
+    "https://www.google.com/finance/*",
+    "https://www.nseindia.com/*",
+    "https://www.screener.in/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://kite.zerodha.com/*",
+        "https://www.tradingview.com/*",
+        "https://in.tradingview.com/*",
+        "https://www.moneycontrol.com/*",
+        "https://www.google.com/finance/*",
+        "https://www.nseindia.com/*",
+        "https://www.screener.in/*"
+      ],
+      "js": ["contentScript.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

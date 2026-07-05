@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TradeMind AI</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="panel-shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Educational stock analysis</p>
+          <h1>TradeMind AI</h1>
+        </div>
+        <button id="openDashboard" class="icon-button" type="button">Open full dashboard</button>
+      </header>
+
+      <section class="notice">
+        TradeMind reads only the visible stock context needed for analysis. It does not place trades or access broker account data.
+      </section>
+
+      <section class="control-card">
+        <div class="detected-row">
+          <span>Detected symbol</span>
+          <button id="detectedSymbol" class="symbol-badge" type="button">Detecting...</button>
+        </div>
+        <label class="input-label" for="symbolInput">Stock symbol</label>
+        <div class="input-row">
+          <input id="symbolInput" type="text" autocomplete="off" spellcheck="false" placeholder="RELIANCE.NS" />
+          <button id="analyzeButton" class="primary-button" type="button">Analyze</button>
+        </div>
+        <p id="statusText" class="status-text">Enter a symbol or use the detected symbol.</p>
+      </section>
+
+      <section id="setupSection" class="score-card hidden" aria-live="polite"></section>
+
+      <section id="marketSection" class="data-card hidden"></section>
+      <section id="indicatorSection" class="data-card hidden"></section>
+      <section id="analysisSection" class="data-card hidden"></section>
+      <section id="riskSection" class="data-card hidden"></section>
+
+      <section class="data-card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Relative ranking</p>
+            <h2>Watchlist</h2>
+          </div>
+          <span id="watchlistCount" class="subtle-pill">0/8</span>
+        </div>
+        <div class="input-row compact">
+          <input id="watchlistInput" type="text" autocomplete="off" spellcheck="false" placeholder="TCS.NS" />
+          <button id="addWatchlist" class="secondary-button" type="button">Add</button>
+        </div>
+        <div id="watchlistItems" class="watchlist-items"></div>
+        <button id="rankWatchlist" class="secondary-button full-width" type="button">Rank current watchlist</button>
+        <div id="rankingCompare" class="ranking-compare hidden"></div>
+      </section>
+
+      <p class="disclaimer">Educational analysis only. Not financial advice. No broker execution or real-money trading is included.</p>
+    </main>
+
+    <script type="module" src="sidepanel.js"></script>
+  </body>
+</html>

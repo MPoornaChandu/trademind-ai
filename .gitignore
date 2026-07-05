@@ -20,6 +20,8 @@ frontend/.next/
 frontend/out/
 frontend/dist/
 frontend/.turbo/
+extension/node_modules/
+extension/dist/
 
 # Playwright
 frontend/playwright-report/
