@@ -47,7 +47,8 @@ export function normalizeSymbol(value: string | null | undefined): string | null
     return null;
   }
 
-  const cleaned = value.trim().toUpperCase().replace(/[()]/g, "").replace(/_/g, "-");
+  const decoded = safeDecode(value);
+  const cleaned = decoded.trim().toUpperCase().replace(/[()]/g, "").replace(/_/g, "-");
   if (!cleaned) {
     return null;
   }
@@ -55,6 +56,21 @@ export function normalizeSymbol(value: string | null | undefined): string | null
   const tradingViewPath = cleaned.match(/\/SYMBOLS\/NSE-([A-Z0-9-]{2,20})(?:\/|$)/);
   if (tradingViewPath?.[1]) {
     return toNseSymbol(tradingViewPath[1]);
+  }
+
+  const googleFinancePath = cleaned.match(/\/FINANCE\/QUOTE\/([A-Z0-9-]{2,20})[:%-]+NSE(?:[/?#]|$)/);
+  if (googleFinancePath?.[1]) {
+    return toNseSymbol(googleFinancePath[1]);
+  }
+
+  const screenerPath = cleaned.match(/\/COMPANY\/([A-Z0-9-]{2,20})(?:\/|$)/);
+  if (screenerPath?.[1]) {
+    return toNseSymbol(screenerPath[1]);
+  }
+
+  const nseQuery = cleaned.match(/[?&](?:SYMBOL|SYMBOL_NAME|UNDERLYING)=([A-Z0-9-]{2,20})(?:[&#]|$)/);
+  if (nseQuery?.[1]) {
+    return toNseSymbol(nseQuery[1]);
   }
 
   const nsePrefix = cleaned.match(/\bNSE[:\s-]+([A-Z0-9-]{2,20})(?:\.NS)?\b/);
@@ -72,7 +88,7 @@ export function normalizeSymbol(value: string | null | undefined): string | null
     return toNseSymbol(yahooNse[1]);
   }
 
-  const pathSymbol = cleaned.match(/(?:SYMBOL|QUOTE|EQUITIES|STOCK)[/=:-]+([A-Z0-9-]{2,20})/);
+  const pathSymbol = cleaned.match(/(?:SYMBOL|QUOTE|EQUITIES|STOCK|COMPANY)[/=:-]+([A-Z0-9-]{2,20})/);
   if (pathSymbol?.[1]) {
     return toNseSymbol(pathSymbol[1]);
   }
@@ -121,4 +137,12 @@ function isLikelySymbol(symbol: string): boolean {
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function safeDecode(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
 }

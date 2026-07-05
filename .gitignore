@@ -22,6 +22,7 @@ frontend/dist/
 frontend/.turbo/
 extension/node_modules/
 extension/dist/
+extension/*.zip
 
 # Playwright
 frontend/playwright-report/
