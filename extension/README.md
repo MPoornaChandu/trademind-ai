@@ -2,6 +2,15 @@
 
 TradeMind AI is a read-only educational stock analysis extension. It opens as a Chrome popup or side panel, detects visible stock context when possible, supports manual symbol input, calls the live TradeMind AI backend, and shows setup score, setup quality, indicators, risk warnings, AI explanation, and relative watchlist ranking.
 
+## What The Extension Does
+
+- Detects public stock-symbol context when available.
+- Lets you manually analyze symbols such as `RELIANCE.NS`.
+- Shows setup score and setup quality from the deterministic backend ranking engine.
+- Ranks the local watchlist with filters for stronger setups, lower risk, higher confidence, and setups that need caution.
+- Highlights where the current analyzed stock ranks against the watchlist.
+- Shows compact reasons, risk warnings, and what-could-go-wrong notes for enriched top-ranked setups.
+
 ## Safety Boundary
 
 Educational analysis only. Not financial advice. No broker execution or real-money trading is included.
@@ -105,3 +114,17 @@ https://trademind-ai-delta.vercel.app/
 - If one data section fails, click `Retry analysis`.
 - After rebuilding, reload the extension in `chrome://extensions`.
 - If Chrome still shows old behavior, remove the extension and load `extension/dist` again.
+
+## Manual Smoke Test Checklist
+
+- Open the extension on the TradingView homepage.
+- Open `https://www.tradingview.com/symbols/NSE-RELIANCE/`.
+- Open `https://www.google.com/finance/quote/RELIANCE:NSE`.
+- Open `https://www.screener.in/company/RELIANCE/`.
+- Try manual input: `RELIANCE.NS`.
+- Click `Analyze`.
+- Click `Rank current watchlist`.
+- Try the ranking filters.
+- Expand one ranked setup.
+- Click `Open full dashboard`.
+- Confirm the disclaimer remains visible.

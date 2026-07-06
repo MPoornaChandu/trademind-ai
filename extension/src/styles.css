@@ -387,6 +387,59 @@ input:focus {
   margin-top: 14px;
 }
 
+.ranking-toolbar {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.filter-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.filter-chip {
+  min-height: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.2);
+  color: #d4d4d8;
+  padding: 0 10px;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.filter-chip.active {
+  border-color: rgba(45, 212, 191, 0.4);
+  background: rgba(45, 212, 191, 0.14);
+  color: #ccfbf1;
+}
+
+.sort-control {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  color: #a1a1aa;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.sort-control select {
+  min-width: 0;
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.28);
+  color: #f4f4f5;
+  padding: 0 10px;
+  font: inherit;
+  text-transform: none;
+}
+
 .highlight {
   border: 1px solid rgba(45, 212, 191, 0.22);
   border-radius: 14px;
@@ -395,6 +448,178 @@ input:focus {
   padding: 10px;
   font-size: 12px;
   font-weight: 850;
+}
+
+.comparison-insight {
+  border: 1px solid rgba(251, 191, 36, 0.2);
+  border-radius: 14px;
+  background: rgba(251, 191, 36, 0.09);
+  color: #fde68a;
+  padding: 10px;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.5;
+}
+
+.comparison-insight.muted {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: #d4d4d8;
+}
+
+.rank-card-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.rank-card {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 15px;
+  background: rgba(0, 0, 0, 0.22);
+  padding: 12px;
+}
+
+.rank-card.current {
+  border-color: rgba(45, 212, 191, 0.34);
+  background: rgba(45, 212, 191, 0.08);
+}
+
+.rank-card.failed {
+  border-color: rgba(251, 191, 36, 0.2);
+  background: rgba(251, 191, 36, 0.08);
+}
+
+.rank-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.rank-kicker {
+  margin: 0;
+  color: #a1a1aa;
+  font-size: 10px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.rank-card h3 {
+  margin: 3px 0 0;
+  color: #ffffff;
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+
+.current-badge {
+  display: inline-flex;
+  margin-left: 4px;
+  border: 1px solid rgba(45, 212, 191, 0.3);
+  border-radius: 999px;
+  padding: 2px 6px;
+  color: #ccfbf1;
+  font-size: 10px;
+  vertical-align: middle;
+}
+
+.score-pill {
+  flex: 0 0 auto;
+  min-width: 48px;
+  border: 1px solid rgba(251, 191, 36, 0.26);
+  border-radius: 14px;
+  background: rgba(251, 191, 36, 0.12);
+  color: #fef3c7;
+  padding: 8px 10px;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 950;
+}
+
+.rank-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.rank-badge {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #e4e4e7;
+  padding: 6px 8px;
+  font-size: 10px;
+  font-weight: 850;
+  text-transform: capitalize;
+}
+
+.rank-badge.risk-low,
+.rank-badge.confidence-high {
+  border-color: rgba(45, 212, 191, 0.28);
+  background: rgba(45, 212, 191, 0.1);
+  color: #ccfbf1;
+}
+
+.rank-badge.risk-medium,
+.rank-badge.confidence-medium {
+  border-color: rgba(251, 191, 36, 0.26);
+  background: rgba(251, 191, 36, 0.1);
+  color: #fde68a;
+}
+
+.rank-badge.risk-high,
+.rank-badge.confidence-low {
+  border-color: rgba(251, 113, 133, 0.28);
+  background: rgba(251, 113, 133, 0.1);
+  color: #ffe4e6;
+}
+
+.rank-note {
+  margin: 10px 0 0;
+  color: #d4d4d8;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.rank-note.warning {
+  color: #fde68a;
+}
+
+.details-button {
+  width: 100%;
+  min-height: 36px;
+  margin-top: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #f4f4f5;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.rank-details {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 10px;
+}
+
+.compact-list h4 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 12px;
+}
+
+.compact-list ul {
+  display: grid;
+  gap: 6px;
+  margin: 7px 0 0;
+  padding-left: 16px;
+  color: #d4d4d8;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .rank-table {

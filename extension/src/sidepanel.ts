@@ -90,6 +90,8 @@ type AnalysisBundle = {
 };
 
 type DetectionState = "detecting" | "detected" | "not_detected" | "error";
+type RankingFilter = "all" | "stronger" | "lower_risk" | "higher_confidence" | "needs_caution";
+type RankingSort = "score" | "risk" | "confidence";
 
 const DETECTION_TIMEOUT_MS = 2500;
 const REQUEST_TIMEOUT_MS = 30000;
@@ -119,6 +121,12 @@ let watchlist = [...DEFAULT_WATCHLIST];
 let detectedSymbol: string | null = null;
 let currentSymbol: string | null = null;
 let eventsAttached = false;
+let latestCompareResult: CompareResponse | null = null;
+let latestCompareSymbols: string[] = [];
+let activeRankingFilter: RankingFilter = "all";
+let activeRankingSort: RankingSort = "score";
+let expandedRankingSymbols = new Set<string>();
+let rankingDetails = new Map<string, RankingReport>();
 
 document.addEventListener("DOMContentLoaded", () => {
   initPanel().catch((error: unknown) => {
@@ -497,13 +505,14 @@ async function removeWatchlistSymbol(symbol: string): Promise<void> {
 
 async function rankCurrentWatchlist(): Promise<void> {
   console.log("Ranking watchlist clicked");
-  const symbols = watchlist.slice(0, MAX_WATCHLIST_ITEMS);
+  const symbols = comparisonSymbols();
   if (symbols.length < 2) {
     setStatus("Add at least two symbols to rank the watchlist.");
     return;
   }
 
   rankWatchlistButton.disabled = true;
+  rankWatchlistButton.textContent = "Ranking...";
   rankingCompare.classList.remove("hidden");
   rankingCompare.innerHTML = `<p class="status-text">Ranking current watchlist...</p>`;
 
@@ -512,15 +521,52 @@ async function rankCurrentWatchlist(): Promise<void> {
       method: "POST",
       body: JSON.stringify({ symbols })
     });
-    rankingCompare.innerHTML = renderRankingCompare(result);
+    latestCompareResult = result;
+    latestCompareSymbols = symbols;
+    activeRankingFilter = "all";
+    activeRankingSort = "score";
+    expandedRankingSymbols = new Set<string>();
+    rankingDetails = new Map<string, RankingReport>();
+    renderLatestRankingBoard();
+    void enrichTopRankedSetups(result);
     setStatus("Watchlist ranking loaded.");
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Watchlist ranking could not be loaded.";
     console.warn("TradeMind watchlist ranking failed.", error);
     rankingCompare.innerHTML = softWarningCard("Relative ranking is temporarily unavailable.", false);
   } finally {
     rankWatchlistButton.disabled = false;
+    rankWatchlistButton.textContent = "Rank current watchlist";
   }
+}
+
+function comparisonSymbols(): string[] {
+  const symbols = watchlist.slice(0, MAX_WATCHLIST_ITEMS);
+  if (!currentSymbol || symbols.includes(currentSymbol) || symbols.length >= MAX_WATCHLIST_ITEMS) {
+    return symbols;
+  }
+
+  return [...symbols, currentSymbol];
+}
+
+async function enrichTopRankedSetups(result: CompareResponse): Promise<void> {
+  const symbols = result.rankings
+    .filter((item) => item.score !== null && !item.error)
+    .slice(0, 3)
+    .map((item) => item.symbol);
+
+  const detailResults = await Promise.allSettled(
+    symbols.map((symbol) => fetchApi<RankingReport>(`/api/ranking/${encodeURIComponent(symbol)}`))
+  );
+
+  detailResults.forEach((detailResult) => {
+    if (detailResult.status === "fulfilled") {
+      rankingDetails.set(detailResult.value.symbol, detailResult.value);
+    } else {
+      console.warn("TradeMind ranking detail enrichment failed.", detailResult.reason);
+    }
+  });
+
+  renderLatestRankingBoard();
 }
 
 async function wakeBackend(): Promise<void> {
@@ -598,24 +644,216 @@ function renderWatchlist(): void {
   }
 }
 
-function renderRankingCompare(result: CompareResponse): string {
-  const rows = result.rankings.map((item) => `
-    <div class="rank-row">
-      <span>${item.rank ?? "-"}</span>
-      <strong>${escapeHtml(item.symbol)}</strong>
-      <span>${item.score ?? "-"}</span>
-      <span>${escapeHtml(item.setup_quality ?? item.error ?? "Unavailable")}</span>
-    </div>
-  `).join("");
+function renderLatestRankingBoard(): void {
+  if (!latestCompareResult) {
+    return;
+  }
+
+  rankingCompare.innerHTML = renderRankingBoard(latestCompareResult);
+}
+
+function renderRankingBoard(result: CompareResponse): string {
+  const validCount = result.rankings.filter((item) => item.score !== null && !item.error).length;
+  const currentInsight = renderCurrentStockInsight(result, validCount);
+  const filteredItems = sortRankingItems(result.rankings.filter(matchesRankingFilter));
+  const failedItems = result.rankings.filter((item) => item.error);
+  const cards = filteredItems.map(renderRankCard).join("");
+  const failedCards = failedItems.map(renderFailedRankCard).join("");
 
   return `
     ${result.best_setup ? `<p class="highlight">Strongest setup in this comparison: ${escapeHtml(result.best_setup)}</p>` : ""}
-    <div class="rank-table">
-      <div class="rank-row rank-head"><span>Rank</span><span>Symbol</span><span>Score</span><span>Setup Quality</span></div>
-      ${rows}
+    ${currentInsight}
+    <div class="ranking-toolbar">
+      <div class="filter-chip-row">
+        ${rankingFilterButton("all", "All")}
+        ${rankingFilterButton("stronger", "Stronger setups")}
+        ${rankingFilterButton("lower_risk", "Lower risk")}
+        ${rankingFilterButton("higher_confidence", "Higher confidence")}
+        ${rankingFilterButton("needs_caution", "Needs caution")}
+      </div>
+      <label class="sort-control">
+        <span>Sort</span>
+        <select data-rank-sort="true">
+          <option value="score" ${activeRankingSort === "score" ? "selected" : ""}>Score</option>
+          <option value="risk" ${activeRankingSort === "risk" ? "selected" : ""}>Risk</option>
+          <option value="confidence" ${activeRankingSort === "confidence" ? "selected" : ""}>Confidence</option>
+        </select>
+      </label>
+    </div>
+    <div class="rank-card-list">
+      ${cards || `<p class="status-text">No ranked symbols match this view.</p>`}
+      ${failedCards}
     </div>
     <p class="mini-disclaimer">${escapeHtml(result.disclaimer)}</p>
   `;
+}
+
+function renderCurrentStockInsight(result: CompareResponse, validCount: number): string {
+  if (!currentSymbol) {
+    return "";
+  }
+
+  const currentItem = result.rankings.find((item) => item.symbol === currentSymbol && item.rank !== null);
+  if (currentItem?.rank) {
+    return `<p class="comparison-insight">Current stock ranks #${currentItem.rank} out of ${validCount} in this watchlist comparison.</p>`;
+  }
+
+  if (!watchlist.includes(currentSymbol)) {
+    return `<p class="comparison-insight muted">Current stock is not in watchlist. Add it to compare directly.</p>`;
+  }
+
+  return "";
+}
+
+function rankingFilterButton(filter: RankingFilter, label: string): string {
+  const activeClass = activeRankingFilter === filter ? " active" : "";
+  return `<button class="filter-chip${activeClass}" type="button" data-rank-filter="${filter}">${escapeHtml(label)}</button>`;
+}
+
+function matchesRankingFilter(item: CompareItem): boolean {
+  if (item.error) {
+    return false;
+  }
+
+  if (activeRankingFilter === "all") {
+    return true;
+  }
+
+  const score = item.score ?? 0;
+  const warnings = item.warnings.length + (rankingDetails.get(item.symbol)?.warnings.length ?? 0);
+
+  if (activeRankingFilter === "stronger") {
+    return score >= 70;
+  }
+  if (activeRankingFilter === "lower_risk") {
+    return item.risk_level === "low" || item.risk_level === "medium";
+  }
+  if (activeRankingFilter === "higher_confidence") {
+    return item.confidence === "high" || item.confidence === "medium";
+  }
+
+  return item.risk_level === "high" || item.confidence === "low" || score < 50 || warnings > 0;
+}
+
+function sortRankingItems(items: CompareItem[]): CompareItem[] {
+  const sortedItems = [...items];
+  sortedItems.sort((left, right) => {
+    if (activeRankingSort === "risk") {
+      return riskRank(left.risk_level) - riskRank(right.risk_level) || (right.score ?? -1) - (left.score ?? -1);
+    }
+    if (activeRankingSort === "confidence") {
+      return confidenceRank(right.confidence) - confidenceRank(left.confidence) || (right.score ?? -1) - (left.score ?? -1);
+    }
+
+    return (right.score ?? -1) - (left.score ?? -1);
+  });
+  return sortedItems;
+}
+
+function renderRankCard(item: CompareItem): string {
+  const detail = rankingDetails.get(item.symbol);
+  const isCurrent = currentSymbol === item.symbol;
+  const expanded = expandedRankingSymbols.has(item.symbol);
+  const reason = firstText(item.reasons, detail?.reasons) ?? "Signals are mixed in this comparison.";
+  const warning = firstText(item.warnings, detail?.warnings) ?? "Review risk warnings before relying on one setup.";
+
+  return `
+    <article class="rank-card ${isCurrent ? "current" : ""}">
+      <div class="rank-card-top">
+        <div>
+          <p class="rank-kicker">Rank ${item.rank ?? "-"}</p>
+          <h3>${escapeHtml(item.symbol)}${isCurrent ? ` <span class="current-badge">Current</span>` : ""}</h3>
+        </div>
+        <div class="score-pill">${item.score ?? "-"}</div>
+      </div>
+      <div class="rank-badges">
+        ${badge(item.setup_quality ?? "Setup quality unavailable", "quality")}
+        ${badge(`Confidence: ${item.confidence ?? "-"}`, `confidence-${item.confidence ?? "unknown"}`)}
+        ${badge(`Risk: ${item.risk_level ?? "-"}`, `risk-${item.risk_level ?? "unknown"}`)}
+      </div>
+      <p class="rank-note"><strong>Reason:</strong> ${escapeHtml(reason)}</p>
+      <p class="rank-note warning"><strong>Risk warning:</strong> ${escapeHtml(warning)}</p>
+      <button class="details-button" type="button" data-rank-toggle="${escapeHtml(item.symbol)}">
+        ${expanded ? "Hide details" : "Show details"}
+      </button>
+      ${expanded ? renderRankDetails(item, detail) : ""}
+    </article>
+  `;
+}
+
+function renderRankDetails(item: CompareItem, detail: RankingReport | undefined): string {
+  if (!detail) {
+    return `<div class="rank-details"><p class="status-text">More detail is loading for top-ranked setups.</p></div>`;
+  }
+
+  return `
+    <div class="rank-details">
+      ${compactList("Reasons", detail.reasons)}
+      ${compactList("Risk warnings", detail.warnings)}
+      ${compactList("What could go wrong", detail.what_could_go_wrong)}
+    </div>
+  `;
+}
+
+function renderFailedRankCard(item: CompareItem): string {
+  return `
+    <article class="rank-card failed">
+      <div class="rank-card-top">
+        <div>
+          <p class="rank-kicker">Unavailable</p>
+          <h3>${escapeHtml(item.symbol)}</h3>
+        </div>
+      </div>
+      <p class="rank-note warning">This symbol could not be ranked right now. Try again in a few seconds.</p>
+    </article>
+  `;
+}
+
+function badge(label: string, tone: string): string {
+  return `<span class="rank-badge ${tone}">${escapeHtml(label)}</span>`;
+}
+
+function firstText(primary: string[], secondary?: string[]): string | null {
+  return primary[0] ?? secondary?.[0] ?? null;
+}
+
+function compactList(title: string, items: string[]): string {
+  if (!items.length) {
+    return "";
+  }
+
+  return `
+    <div class="compact-list">
+      <h4>${escapeHtml(title)}</h4>
+      <ul>${items.slice(0, 3).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+    </div>
+  `;
+}
+
+function riskRank(riskLevel: RiskLevel | null): number {
+  if (riskLevel === "low") {
+    return 1;
+  }
+  if (riskLevel === "medium") {
+    return 2;
+  }
+  if (riskLevel === "high") {
+    return 3;
+  }
+  return 4;
+}
+
+function confidenceRank(confidence: Confidence | null): number {
+  if (confidence === "high") {
+    return 3;
+  }
+  if (confidence === "medium") {
+    return 2;
+  }
+  if (confidence === "low") {
+    return 1;
+  }
+  return 0;
 }
 
 function softWarningCard(title: string, showRetry: boolean): string {
@@ -632,6 +870,31 @@ document.addEventListener("click", (event) => {
   const target = event.target;
   if (target instanceof HTMLElement && target.dataset.retryAnalysis === "true") {
     void retryCurrentAnalysis();
+    return;
+  }
+
+  if (target instanceof HTMLElement && target.dataset.rankFilter) {
+    activeRankingFilter = target.dataset.rankFilter as RankingFilter;
+    renderLatestRankingBoard();
+    return;
+  }
+
+  if (target instanceof HTMLElement && target.dataset.rankToggle) {
+    const symbol = target.dataset.rankToggle;
+    if (expandedRankingSymbols.has(symbol)) {
+      expandedRankingSymbols.delete(symbol);
+    } else {
+      expandedRankingSymbols.add(symbol);
+    }
+    renderLatestRankingBoard();
+  }
+});
+
+document.addEventListener("change", (event) => {
+  const target = event.target;
+  if (target instanceof HTMLSelectElement && target.dataset.rankSort === "true") {
+    activeRankingSort = target.value as RankingSort;
+    renderLatestRankingBoard();
   }
 });
 
