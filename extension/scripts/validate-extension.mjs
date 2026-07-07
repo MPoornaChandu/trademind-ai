@@ -48,6 +48,7 @@ for (const htmlFile of ["popup.html", "sidepanel.html"]) {
 const textTargets = await Promise.all(requiredFiles.map((file) => readFile(join(dist, file), "utf8")));
 const combined = textTargets.join("\n").toLowerCase();
 const requiredBackend = "https://trademind-ai-backend-uw1j.onrender.com";
+const requiredLocalBackend = "http://localhost:8000";
 const requiredDisclaimer = "educational analysis only. not financial advice. no broker execution or real-money trading is included.";
 const banned = ["must buy", "must sell", "guaranteed profit", "100% profit", "sure shot", "risk-free", "will definitely", "no risk"];
 
@@ -55,12 +56,12 @@ if (!combined.includes(requiredBackend)) {
   throw new Error("Extension default backend URL is missing.");
 }
 
-if (!combined.includes(requiredDisclaimer)) {
-  throw new Error("Required educational disclaimer is missing.");
+if (!combined.includes(requiredLocalBackend)) {
+  throw new Error("Extension local backend URL is missing.");
 }
 
-if (combined.includes("localhost") || combined.includes("127.0.0.1")) {
-  throw new Error("Extension production defaults must not include localhost.");
+if (!combined.includes(requiredDisclaimer)) {
+  throw new Error("Required educational disclaimer is missing.");
 }
 
 const hits = banned.filter((phrase) => combined.includes(phrase));

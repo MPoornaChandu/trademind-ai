@@ -33,7 +33,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
   min-width: 0;
 }
@@ -148,7 +149,8 @@ button:disabled {
   margin-top: 12px;
 }
 
-input {
+input,
+.settings-select {
   width: 100%;
   min-height: 42px;
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -160,9 +162,116 @@ input {
   font-weight: 750;
 }
 
-input:focus {
+input:read-only {
+  color: #d4d4d8;
+}
+
+input:focus,
+.settings-select:focus {
   border-color: rgba(45, 212, 191, 0.55);
   box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.12);
+}
+
+.settings-card {
+  padding: 0;
+}
+
+.settings-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  padding: 15px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.settings-summary::-webkit-details-marker {
+  display: none;
+}
+
+.settings-summary strong {
+  display: block;
+  margin-top: 4px;
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 850;
+}
+
+.settings-grid {
+  display: grid;
+  gap: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 15px;
+}
+
+.settings-select {
+  appearance: none;
+}
+
+.settings-note {
+  margin: 0;
+  border: 1px solid rgba(45, 212, 191, 0.2);
+  border-radius: 12px;
+  background: rgba(45, 212, 191, 0.08);
+  color: #ccfbf1;
+  padding: 9px 10px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.settings-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.provider-health {
+  display: grid;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.provider-health h3 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 14px;
+}
+
+.provider-list {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+}
+
+.provider-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 9px 10px;
+}
+
+.provider-row span,
+.provider-row strong {
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+
+.provider-row span {
+  color: #a1a1aa;
+  font-weight: 800;
+}
+
+.provider-row strong {
+  color: #f4f4f5;
+  font-weight: 850;
+  text-align: right;
 }
 
 .primary-button,
@@ -768,6 +877,10 @@ input:focus {
   .primary-button,
   .secondary-button {
     width: 100%;
+  }
+
+  .settings-actions {
+    grid-template-columns: 1fr;
   }
 
   .metric-grid {

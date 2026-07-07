@@ -22,6 +22,8 @@
   ],
   "host_permissions": [
     "https://trademind-ai-backend-uw1j.onrender.com/*",
+    "http://localhost:8000/*",
+    "http://127.0.0.1:8000/*",
     "https://trademind-ai-delta.vercel.app/*",
     "https://kite.zerodha.com/*",
     "https://www.tradingview.com/*",
@@ -30,6 +32,10 @@
     "https://www.google.com/finance/*",
     "https://www.nseindia.com/*",
     "https://www.screener.in/*"
+  ],
+  "optional_host_permissions": [
+    "http://*/*",
+    "https://*/*"
   ],
   "content_scripts": [
     {

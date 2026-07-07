@@ -1,9 +1,12 @@
 import {
   API_BASE_URL_STORAGE_KEY,
+  BACKEND_MODE_STORAGE_KEY,
+  type BackendMode,
   DASHBOARD_URL,
   DEFAULT_API_BASE_URL,
   DEFAULT_WATCHLIST,
   DISCLAIMER,
+  LOCAL_API_BASE_URL,
   MAX_WATCHLIST_ITEMS,
   WATCHLIST_STORAGE_KEY,
   type DetectionResult,
@@ -80,6 +83,22 @@ type CompareResponse = {
   disclaimer: string;
 };
 
+type ProviderHealthEntry = {
+  provider?: string;
+  available?: boolean;
+  configured?: boolean;
+  status?: string;
+  model?: string | null;
+  error?: string | null;
+};
+
+type ProviderHealthResponse = {
+  default_provider?: string;
+  requested_provider?: string;
+  active_provider?: string;
+  providers?: ProviderHealthEntry[];
+};
+
 type AnalysisBundle = {
   ranking: RankingReport | null;
   market: MarketSummary | null;
@@ -96,6 +115,7 @@ type RankingSort = "score" | "risk" | "confidence";
 const DETECTION_TIMEOUT_MS = 2500;
 const REQUEST_TIMEOUT_MS = 30000;
 const HEALTH_TIMEOUT_MS = 8000;
+const CONNECTION_TEST_TIMEOUT_MS = 15000;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const SOFT_SECTION_MESSAGE = "This section could not load right now. Market data providers can be slow. Try again in a few seconds.";
 
@@ -115,8 +135,18 @@ let riskSection: HTMLElement;
 let watchlistItems: HTMLElement;
 let watchlistCount: HTMLElement;
 let rankingCompare: HTMLElement;
+let backendModeSelect: HTMLSelectElement;
+let backendUrlInput: HTMLInputElement;
+let backendModeSummary: HTMLElement;
+let saveBackendSettingsButton: HTMLButtonElement;
+let resetBackendSettingsButton: HTMLButtonElement;
+let testBackendConnectionButton: HTMLButtonElement;
+let backendSettingsStatus: HTMLElement;
+let providerHealth: HTMLElement;
+let localModeNote: HTMLElement;
 
 let apiBaseUrl = DEFAULT_API_BASE_URL;
+let backendMode: BackendMode = "cloud";
 let watchlist = [...DEFAULT_WATCHLIST];
 let detectedSymbol: string | null = null;
 let currentSymbol: string | null = null;
@@ -161,6 +191,15 @@ function bindElements(): void {
   watchlistItems = getElement<HTMLElement>("watchlistItems");
   watchlistCount = getElement<HTMLElement>("watchlistCount");
   rankingCompare = getElement<HTMLElement>("rankingCompare");
+  backendModeSelect = getElement<HTMLSelectElement>("backendModeSelect");
+  backendUrlInput = getElement<HTMLInputElement>("backendUrlInput");
+  backendModeSummary = getElement<HTMLElement>("backendModeSummary");
+  saveBackendSettingsButton = getElement<HTMLButtonElement>("saveBackendSettings");
+  resetBackendSettingsButton = getElement<HTMLButtonElement>("resetBackendSettings");
+  testBackendConnectionButton = getElement<HTMLButtonElement>("testBackendConnection");
+  backendSettingsStatus = getElement<HTMLElement>("backendSettingsStatus");
+  providerHealth = getElement<HTMLElement>("providerHealth");
+  localModeNote = getElement<HTMLElement>("localModeNote");
 }
 
 function attachEvents(): void {
@@ -181,6 +220,15 @@ function attachEvents(): void {
     }
   });
   rankWatchlistButton.addEventListener("click", () => void rankCurrentWatchlist());
+  backendModeSelect.addEventListener("change", () => applyBackendModeSelection(backendModeSelect.value));
+  backendUrlInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      void saveBackendSettings();
+    }
+  });
+  saveBackendSettingsButton.addEventListener("click", () => void saveBackendSettings());
+  resetBackendSettingsButton.addEventListener("click", () => void resetBackendSettings());
+  testBackendConnectionButton.addEventListener("click", () => void testBackendConnection());
   openDashboardButton.addEventListener("click", () => {
     console.log("Open dashboard clicked");
     void chrome.runtime.sendMessage({ type: "TRADEMIND_OPEN_DASHBOARD" }).catch(() => chrome.tabs.create({ url: DASHBOARD_URL }));
@@ -359,6 +407,275 @@ async function fetchApi<T>(path: string, options: RequestInit = {}): Promise<T> 
   }
 
   return response.json() as Promise<T>;
+}
+
+function applyBackendModeSelection(value: string): void {
+  backendMode = isBackendMode(value) ? value : "cloud";
+  if (backendMode !== "custom") {
+    apiBaseUrl = backendUrlForMode(backendMode);
+  } else {
+    apiBaseUrl = trimTrailingSlash(backendUrlInput.value || apiBaseUrl || DEFAULT_API_BASE_URL);
+  }
+  renderBackendSettings();
+}
+
+async function saveBackendSettings(): Promise<void> {
+  const selectedMode = isBackendMode(backendModeSelect.value) ? backendModeSelect.value : "cloud";
+  const nextUrl = selectedMode === "custom"
+    ? trimTrailingSlash(backendUrlInput.value)
+    : backendUrlForMode(selectedMode);
+
+  if (!isValidBackendUrl(nextUrl)) {
+    setBackendSettingsStatus("Enter a valid HTTP or HTTPS backend URL before saving.");
+    backendUrlInput.focus();
+    return;
+  }
+
+  if (selectedMode === "custom") {
+    const hasPermission = await requestBackendOriginPermission(nextUrl);
+    if (!hasPermission) {
+      setBackendSettingsStatus("Custom backend permission was not granted. Settings were not saved.");
+      return;
+    }
+  }
+
+  backendMode = selectedMode;
+  apiBaseUrl = nextUrl;
+  await chrome.storage.local.set({
+    [BACKEND_MODE_STORAGE_KEY]: backendMode,
+    [API_BASE_URL_STORAGE_KEY]: apiBaseUrl
+  });
+  renderBackendSettings();
+  setBackendSettingsStatus(`${backendModeLabel(backendMode)} backend saved.`);
+}
+
+async function resetBackendSettings(): Promise<void> {
+  backendMode = "cloud";
+  apiBaseUrl = DEFAULT_API_BASE_URL;
+  await chrome.storage.local.set({
+    [BACKEND_MODE_STORAGE_KEY]: backendMode,
+    [API_BASE_URL_STORAGE_KEY]: apiBaseUrl
+  });
+  providerHealth.innerHTML = `<p class="status-text">Provider status will appear after testing the connection.</p>`;
+  renderBackendSettings();
+  setBackendSettingsStatus("Cloud backend restored.");
+}
+
+async function testBackendConnection(): Promise<void> {
+  const selectedMode = isBackendMode(backendModeSelect.value) ? backendModeSelect.value : "cloud";
+  const testUrl = selectedMode === "custom"
+    ? trimTrailingSlash(backendUrlInput.value)
+    : backendUrlForMode(selectedMode);
+
+  if (!isValidBackendUrl(testUrl)) {
+    setBackendSettingsStatus("Enter a valid HTTP or HTTPS backend URL before testing.");
+    backendUrlInput.focus();
+    return;
+  }
+
+  if (selectedMode === "custom") {
+    const hasPermission = await requestBackendOriginPermission(testUrl);
+    if (!hasPermission) {
+      setBackendSettingsStatus("Custom backend permission was not granted. Connection was not tested.");
+      return;
+    }
+  }
+
+  testBackendConnectionButton.disabled = true;
+  testBackendConnectionButton.textContent = "Testing...";
+  setBackendSettingsStatus("Connecting... Render may take a few seconds on the first request.");
+
+  try {
+    await fetchBackendJson<Record<string, unknown>>("/health", CONNECTION_TEST_TIMEOUT_MS, testUrl);
+    const health = await fetchBackendJson<ProviderHealthResponse>("/api/providers/health", CONNECTION_TEST_TIMEOUT_MS, testUrl);
+    renderProviderHealth(health);
+    setBackendSettingsStatus("Connection succeeded. Provider status loaded.");
+  } catch (error) {
+    console.warn("TradeMind backend connection test failed.", error);
+    renderProviderHealthUnavailable();
+    setBackendSettingsStatus("Connection failed. Check the selected backend URL and try again.");
+  } finally {
+    testBackendConnectionButton.disabled = false;
+    testBackendConnectionButton.textContent = "Test connection";
+  }
+}
+
+async function fetchBackendJson<T>(path: string, timeoutMs: number, baseUrl = apiBaseUrl): Promise<T> {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(`${baseUrl}${path}`, {
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+      signal: controller.signal
+    });
+
+    if (!response.ok) {
+      throw new Error(`Backend returned status ${response.status}.`);
+    }
+
+    return response.json() as Promise<T>;
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
+
+function renderBackendSettings(): void {
+  backendModeSelect.value = backendMode;
+  backendModeSummary.textContent = backendModeLabel(backendMode);
+  backendUrlInput.value = backendMode === "custom" ? trimTrailingSlash(apiBaseUrl) : backendUrlForMode(backendMode);
+  backendUrlInput.readOnly = backendMode !== "custom";
+  localModeNote.classList.toggle("hidden", backendMode !== "local");
+}
+
+function renderProviderHealth(health: ProviderHealthResponse): void {
+  const providerRows = ["rule_based", "gemini", "ollama", "cloud"]
+    .map((name) => providerStatusRow(providerLabel(name), providerStatus(health, name)))
+    .join("");
+
+  providerHealth.innerHTML = `
+    <h3>AI Provider Status</h3>
+    <div class="provider-list">
+      ${providerStatusRow("Current backend", backendModeLabel(backendMode))}
+      ${providerStatusRow("Requested provider", displayProvider(health.requested_provider ?? health.default_provider))}
+      ${providerStatusRow("Active provider", displayProvider(health.active_provider))}
+      ${providerRows}
+    </div>
+  `;
+}
+
+function renderProviderHealthUnavailable(): void {
+  providerHealth.innerHTML = `<p class="status-text">Provider status unavailable. Check backend connection.</p>`;
+}
+
+function providerStatusRow(label: string, value: string): string {
+  return `
+    <div class="provider-row">
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(value)}</strong>
+    </div>
+  `;
+}
+
+function providerStatus(health: ProviderHealthResponse, providerName: string): string {
+  const entry = health.providers?.find((provider) => provider.provider === providerName);
+  if (!entry) {
+    return "not returned";
+  }
+
+  if (entry.status) {
+    return entry.status.replace(/_/g, " ");
+  }
+
+  if (entry.available === true) {
+    return "ready";
+  }
+
+  if (entry.available === false) {
+    return "unavailable";
+  }
+
+  return "unknown";
+}
+
+function displayProvider(value: string | undefined): string {
+  return value ? value.replace(/_/g, " ") : "not returned";
+}
+
+function providerLabel(value: string): string {
+  if (value === "rule_based") {
+    return "Rule-based";
+  }
+  if (value === "gemini") {
+    return "Gemini";
+  }
+  if (value === "ollama") {
+    return "Ollama";
+  }
+  return "Cloud";
+}
+
+function backendUrlForMode(mode: BackendMode): string {
+  if (mode === "local") {
+    return LOCAL_API_BASE_URL;
+  }
+  return DEFAULT_API_BASE_URL;
+}
+
+function backendModeLabel(mode: BackendMode): string {
+  if (mode === "local") {
+    return "Local";
+  }
+  if (mode === "custom") {
+    return "Custom";
+  }
+  return "Cloud";
+}
+
+function isBackendMode(value: string): value is BackendMode {
+  return value === "cloud" || value === "local" || value === "custom";
+}
+
+function trimTrailingSlash(value: string): string {
+  return value.trim().replace(/\/+$/, "");
+}
+
+function isValidBackendUrl(value: string): boolean {
+  if (!value) {
+    return false;
+  }
+
+  try {
+    const url = new URL(value);
+    return (url.protocol === "http:" || url.protocol === "https:") && Boolean(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
+function permissionPatternForBackend(value: string): string | null {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      return null;
+    }
+    return `${url.protocol}//${url.host}/*`;
+  } catch {
+    return null;
+  }
+}
+
+async function requestBackendOriginPermission(value: string): Promise<boolean> {
+  const origin = permissionPatternForBackend(value);
+  if (!origin || !chrome.permissions) {
+    return true;
+  }
+
+  return new Promise((resolve) => {
+    chrome.permissions.contains({ origins: [origin] }, (alreadyGranted) => {
+      if (alreadyGranted) {
+        resolve(true);
+        return;
+      }
+
+      if (chrome.runtime.lastError) {
+        console.warn("TradeMind custom backend permission lookup failed.", chrome.runtime.lastError.message);
+      }
+
+      chrome.permissions.request({ origins: [origin] }, (granted) => {
+        if (chrome.runtime.lastError) {
+          console.warn("TradeMind custom backend permission request failed.", chrome.runtime.lastError.message);
+          resolve(false);
+          return;
+        }
+        resolve(Boolean(granted));
+      });
+    });
+  });
+}
+
+function setBackendSettingsStatus(message: string): void {
+  backendSettingsStatus.textContent = message;
 }
 
 function renderOptionalSettled<T>(
@@ -949,20 +1266,38 @@ function normalizeWatchlist(value: unknown): string[] {
 
 async function loadStoredSettings(): Promise<void> {
   try {
-    const stored = await chrome.storage.local.get([API_BASE_URL_STORAGE_KEY, WATCHLIST_STORAGE_KEY]);
-    apiBaseUrl = typeof stored[API_BASE_URL_STORAGE_KEY] === "string" ? stored[API_BASE_URL_STORAGE_KEY] : DEFAULT_API_BASE_URL;
+    const stored = await chrome.storage.local.get([BACKEND_MODE_STORAGE_KEY, API_BASE_URL_STORAGE_KEY, WATCHLIST_STORAGE_KEY]);
+    const storedMode = typeof stored[BACKEND_MODE_STORAGE_KEY] === "string" && isBackendMode(stored[BACKEND_MODE_STORAGE_KEY])
+      ? stored[BACKEND_MODE_STORAGE_KEY]
+      : "cloud";
+    const storedUrl = typeof stored[API_BASE_URL_STORAGE_KEY] === "string" ? trimTrailingSlash(stored[API_BASE_URL_STORAGE_KEY]) : "";
+    const normalizedUrl = storedMode === "custom" && isValidBackendUrl(storedUrl) ? storedUrl : backendUrlForMode(storedMode);
+    backendMode = storedMode;
+    apiBaseUrl = normalizedUrl;
+    renderBackendSettings();
+    setBackendSettingsStatus(`${backendModeLabel(backendMode)} backend is selected.`);
 
     const hasSavedWatchlist = Object.prototype.hasOwnProperty.call(stored, WATCHLIST_STORAGE_KEY);
     watchlist = hasSavedWatchlist ? normalizeWatchlist(stored[WATCHLIST_STORAGE_KEY]) : [...DEFAULT_WATCHLIST];
     renderWatchlist();
     console.log("Watchlist loaded", watchlist);
 
+    if (!Object.prototype.hasOwnProperty.call(stored, BACKEND_MODE_STORAGE_KEY) || !Object.prototype.hasOwnProperty.call(stored, API_BASE_URL_STORAGE_KEY)) {
+      await chrome.storage.local.set({
+        [BACKEND_MODE_STORAGE_KEY]: backendMode,
+        [API_BASE_URL_STORAGE_KEY]: apiBaseUrl
+      });
+    }
+
     if (!hasSavedWatchlist) {
       await saveWatchlist();
     }
   } catch (error) {
     console.warn("TradeMind storage unavailable; using default settings in memory.", error);
+    backendMode = "cloud";
     apiBaseUrl = DEFAULT_API_BASE_URL;
+    renderBackendSettings();
+    setBackendSettingsStatus("Cloud backend is selected.");
     watchlist = [...DEFAULT_WATCHLIST];
     renderWatchlist();
     console.log("Watchlist loaded", watchlist);

@@ -57,6 +57,44 @@
         <div id="rankingCompare" class="ranking-compare hidden"></div>
       </section>
 
+      <details id="backendSettings" class="data-card settings-card">
+        <summary class="settings-summary">
+          <span>
+            <span class="eyebrow">Settings</span>
+            <strong>Backend</strong>
+          </span>
+          <span id="backendModeSummary" class="subtle-pill">Cloud</span>
+        </summary>
+
+        <div class="settings-grid">
+          <label class="input-label" for="backendModeSelect">Backend mode</label>
+          <select id="backendModeSelect" class="settings-select">
+            <option value="cloud">Cloud</option>
+            <option value="local">Local</option>
+            <option value="custom">Custom</option>
+          </select>
+
+          <label class="input-label" for="backendUrlInput">Backend URL</label>
+          <input id="backendUrlInput" type="url" autocomplete="off" spellcheck="false" />
+
+          <p id="localModeNote" class="settings-note hidden">
+            Local mode expects TradeMind backend running at http://localhost:8000. Ollama can be connected later through the backend AI provider router.
+          </p>
+
+          <div class="settings-actions">
+            <button id="saveBackendSettings" class="secondary-button" type="button">Save settings</button>
+            <button id="resetBackendSettings" class="secondary-button" type="button">Reset to cloud</button>
+            <button id="testBackendConnection" class="primary-button" type="button">Test connection</button>
+          </div>
+
+          <p id="backendSettingsStatus" class="status-text">Cloud backend is selected.</p>
+
+          <div id="providerHealth" class="provider-health">
+            <p class="status-text">Provider status will appear after testing the connection.</p>
+          </div>
+        </div>
+      </details>
+
       <p class="disclaimer">Educational analysis only. Not financial advice. No broker execution or real-money trading is included.</p>
     </main>
 
